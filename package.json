@@ -1,0 +1,38 @@
+{
+  "name": "thread-mind",
+  "version": "0.1.0",
+  "description": "AI-powered thread-based development assistant with context optimization",
+  "type": "module",
+  "bin": {
+    "thread-mind": "./bin/thread-mind.mjs"
+  },
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare && prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push"
+  },
+  "keywords": [
+    "ai",
+    "thread",
+    "assistant",
+    "developer-tools",
+    "context-optimization"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
+    "@google/genai": "^1.46.0",
+    "@nuxtjs/i18n": "^10.2.3",
+    "@nuxtjs/tailwindcss": "^6.14.0",
+    "@pinia/nuxt": "^0.11.3",
+    "@prisma/client": "^6.19.2",
+    "nuxt": "^4.4.2",
+    "open": "^11.0.0",
+    "openai": "^6.32.0",
+    "prisma": "^6.19.2"
+  }
+}

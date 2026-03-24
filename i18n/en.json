@@ -1,0 +1,118 @@
+{
+  "app": {
+    "name": "ThreadMind",
+    "tagline": "AI-powered thread-based development"
+  },
+  "nav": {
+    "projects": "Projects",
+    "settings": "Settings",
+    "newProject": "New Project",
+    "tokens": "Token Usage"
+  },
+  "project": {
+    "title": "Projects",
+    "create": "Create Project",
+    "name": "Project Name",
+    "targetPath": "Target Directory",
+    "workMode": "Work Mode",
+    "solo": "Solo",
+    "team": "Team",
+    "soloDesc": "Individual project, local data only",
+    "teamDesc": "Team project, shared threads via git",
+    "delete": "Delete Project",
+    "deleteConfirm": "Are you sure you want to delete this project?",
+    "noProjects": "No projects yet. Create one to get started.",
+    "selectFolder": "Select folder"
+  },
+  "thread": {
+    "title": "Threads",
+    "create": "New Thread",
+    "createSub": "New Sub-thread",
+    "rootThread": "Root Thread",
+    "threadTitle": "Thread Title",
+    "systemPrompt": "System Prompt",
+    "systemPromptPlaceholder": "Define the AI's behavior for this thread...",
+    "status": "Status",
+    "active": "Active",
+    "resolved": "Resolved",
+    "archived": "Archived",
+    "summary": "Summary",
+    "generateSummary": "Generate Summary",
+    "updateSummary": "Update Summary",
+    "summaryStale": "Summary is outdated",
+    "readOnly": "Read-only",
+    "readOnlyDesc": "This thread was imported from a team member",
+    "noThreads": "No threads yet. Create a root thread to start.",
+    "delete": "Delete Thread",
+    "deleteConfirm": "This will also delete all sub-threads. Continue?",
+    "context": "Context Preview"
+  },
+  "chat": {
+    "placeholder": "Type your message...",
+    "send": "Send",
+    "stop": "Stop",
+    "model": "Model",
+    "provider": "Provider",
+    "thinking": "Thinking...",
+    "toolCall": "Tool Call",
+    "toolResult": "Result",
+    "noMessages": "Start a conversation in this thread",
+    "pinMessage": "Pin message",
+    "unpinMessage": "Unpin message",
+    "pinnedInfo": "Pinned messages are included in child thread context"
+  },
+  "files": {
+    "title": "File Explorer",
+    "noProject": "No project directory configured",
+    "open": "Open",
+    "modified": "Modified by AI"
+  },
+  "tokens": {
+    "title": "Token Usage",
+    "input": "Input",
+    "output": "Output",
+    "total": "Total",
+    "cost": "Estimated Cost",
+    "saved": "Tokens Saved",
+    "savedDesc": "Compared to full conversation history",
+    "noData": "No usage data yet"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "theme": "Theme",
+    "dark": "Dark",
+    "light": "Light",
+    "providers": "AI Providers",
+    "apiKey": "API Key",
+    "apiKeyPlaceholder": "Enter your API key...",
+    "models": "Models",
+    "testConnection": "Test Connection",
+    "connectionSuccess": "Connection successful",
+    "connectionFailed": "Connection failed",
+    "save": "Save",
+    "saved": "Settings saved"
+  },
+  "sync": {
+    "export": "Export to .threadmind",
+    "import": "Import from .threadmind",
+    "exporting": "Exporting...",
+    "importing": "Importing...",
+    "exportSuccess": "Exported successfully",
+    "importSuccess": "Imported successfully"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "confirm": "Confirm",
+    "search": "Search...",
+    "noResults": "No results found",
+    "back": "Back"
+  }
+}

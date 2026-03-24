@@ -1,0 +1,104 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Project {
+  id         String           @id @default(cuid())
+  name       String
+  targetPath String
+  workMode   String           @default("solo")
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  threads    Thread[]
+  settings   ProjectSettings?
+  tokenUsages TokenUsage[]
+}
+
+model ProjectSettings {
+  id              String  @id @default(cuid())
+  projectId       String  @unique
+  project         Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  defaultProvider String?
+  defaultModel    String?
+  language        String  @default("en")
+  customPrompt    String?
+}
+
+model Thread {
+  id           String       @id @default(cuid())
+  projectId    String
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parentId     String?
+  parent       Thread?      @relation("ThreadTree", fields: [parentId], references: [id])
+  children     Thread[]     @relation("ThreadTree")
+  title        String
+  systemPrompt String?
+  status       String       @default("active")
+  summary      String?
+  summaryHash  String?
+  sortOrder    Int          @default(0)
+  isReadOnly   Boolean      @default(false)
+  sourceAuthor String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  messages     Message[]
+  tokenUsages  TokenUsage[]
+
+  @@index([projectId])
+  @@index([parentId])
+}
+
+model Message {
+  id         String      @id @default(cuid())
+  threadId   String
+  thread     Thread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  role       String
+  content    String
+  isPinned   Boolean     @default(false)
+  metadata   String?
+  createdAt  DateTime    @default(now())
+  tokenUsage TokenUsage?
+
+  @@index([threadId])
+}
+
+model TokenUsage {
+  id                 String   @id @default(cuid())
+  projectId          String
+  project            Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  threadId           String?
+  thread             Thread?  @relation(fields: [threadId], references: [id], onDelete: SetNull)
+  messageId          String?  @unique
+  message            Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  provider           String
+  model              String
+  inputTokens        Int
+  outputTokens       Int
+  estimatedCostUsd   Float    @default(0)
+  contextTokensSaved Int      @default(0)
+  createdAt          DateTime @default(now())
+
+  @@index([projectId])
+  @@index([threadId])
+  @@index([createdAt])
+}
+
+model ProviderConfig {
+  id       String  @id @default(cuid())
+  provider String  @unique
+  apiKey   String
+  models   String
+  isActive Boolean @default(true)
+}
+
+model AppSettings {
+  id          String  @id @default("singleton")
+  language    String  @default("en")
+  theme       String  @default("dark")
+  openBrowser Boolean @default(true)
+}

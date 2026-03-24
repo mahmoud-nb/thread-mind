@@ -1,0 +1,118 @@
+{
+  "app": {
+    "name": "ThreadMind",
+    "tagline": "Assistant de développement IA par threads"
+  },
+  "nav": {
+    "projects": "Projets",
+    "settings": "Paramètres",
+    "newProject": "Nouveau Projet",
+    "tokens": "Consommation Tokens"
+  },
+  "project": {
+    "title": "Projets",
+    "create": "Créer un Projet",
+    "name": "Nom du Projet",
+    "targetPath": "Dossier Cible",
+    "workMode": "Mode de Travail",
+    "solo": "Solo",
+    "team": "Équipe",
+    "soloDesc": "Projet individuel, données locales uniquement",
+    "teamDesc": "Projet d'équipe, threads partagés via git",
+    "delete": "Supprimer le Projet",
+    "deleteConfirm": "Êtes-vous sûr de vouloir supprimer ce projet ?",
+    "noProjects": "Aucun projet. Créez-en un pour commencer.",
+    "selectFolder": "Choisir un dossier"
+  },
+  "thread": {
+    "title": "Threads",
+    "create": "Nouveau Thread",
+    "createSub": "Nouveau Sous-thread",
+    "rootThread": "Thread Racine",
+    "threadTitle": "Titre du Thread",
+    "systemPrompt": "Prompt Système",
+    "systemPromptPlaceholder": "Définissez le comportement de l'IA pour ce thread...",
+    "status": "Statut",
+    "active": "Actif",
+    "resolved": "Résolu",
+    "archived": "Archivé",
+    "summary": "Résumé",
+    "generateSummary": "Générer le Résumé",
+    "updateSummary": "Mettre à jour le Résumé",
+    "summaryStale": "Le résumé est obsolète",
+    "readOnly": "Lecture seule",
+    "readOnlyDesc": "Ce thread a été importé depuis un membre de l'équipe",
+    "noThreads": "Aucun thread. Créez un thread racine pour commencer.",
+    "delete": "Supprimer le Thread",
+    "deleteConfirm": "Cela supprimera aussi tous les sous-threads. Continuer ?",
+    "context": "Aperçu du Contexte"
+  },
+  "chat": {
+    "placeholder": "Tapez votre message...",
+    "send": "Envoyer",
+    "stop": "Arrêter",
+    "model": "Modèle",
+    "provider": "Fournisseur",
+    "thinking": "Réflexion en cours...",
+    "toolCall": "Appel d'outil",
+    "toolResult": "Résultat",
+    "noMessages": "Démarrez une conversation dans ce thread",
+    "pinMessage": "Épingler le message",
+    "unpinMessage": "Désépingler le message",
+    "pinnedInfo": "Les messages épinglés sont inclus dans le contexte des sous-threads"
+  },
+  "files": {
+    "title": "Explorateur de Fichiers",
+    "noProject": "Aucun dossier de projet configuré",
+    "open": "Ouvrir",
+    "modified": "Modifié par l'IA"
+  },
+  "tokens": {
+    "title": "Consommation de Tokens",
+    "input": "Entrée",
+    "output": "Sortie",
+    "total": "Total",
+    "cost": "Coût Estimé",
+    "saved": "Tokens Économisés",
+    "savedDesc": "Par rapport à l'historique complet de conversation",
+    "noData": "Aucune donnée d'utilisation"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "language": "Langue",
+    "theme": "Thème",
+    "dark": "Sombre",
+    "light": "Clair",
+    "providers": "Fournisseurs IA",
+    "apiKey": "Clé API",
+    "apiKeyPlaceholder": "Entrez votre clé API...",
+    "models": "Modèles",
+    "testConnection": "Tester la Connexion",
+    "connectionSuccess": "Connexion réussie",
+    "connectionFailed": "Connexion échouée",
+    "save": "Enregistrer",
+    "saved": "Paramètres enregistrés"
+  },
+  "sync": {
+    "export": "Exporter vers .threadmind",
+    "import": "Importer depuis .threadmind",
+    "exporting": "Exportation...",
+    "importing": "Importation...",
+    "exportSuccess": "Exportation réussie",
+    "importSuccess": "Importation réussie"
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "close": "Fermer",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "confirm": "Confirmer",
+    "search": "Rechercher...",
+    "noResults": "Aucun résultat",
+    "back": "Retour"
+  }
+}
