@@ -41,6 +41,18 @@ export default defineNuxtConfig({
     '~/components',
   ],
 
+  app: {
+    head: {
+      script: [
+        {
+          innerHTML: `(function(){try{var t=localStorage.getItem('threadmind-theme');if(t==='dark'||(t!=='light'&&window.matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark')}catch(e){}})()`,
+          type: 'text/javascript',
+          tagPosition: 'head',
+        },
+      ],
+    },
+  },
+
   devtools: { enabled: true },
 
   nitro: {

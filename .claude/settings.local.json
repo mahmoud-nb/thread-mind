@@ -3,7 +3,14 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(npx prisma:*)",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npx tsx -e \":*)",
+      "Bash(npx kill-port:*)",
+      "Bash(lsof -ti:3000)",
+      "Bash(xargs kill:*)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :3000)",
+      "Bash(findstr LISTENING)"
     ]
   }
 }

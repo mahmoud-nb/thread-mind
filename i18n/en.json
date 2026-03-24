@@ -83,6 +83,7 @@
     "theme": "Theme",
     "dark": "Dark",
     "light": "Light",
+    "system": "System",
     "providers": "AI Providers",
     "apiKey": "API Key",
     "apiKeyPlaceholder": "Enter your API key...",

@@ -28,7 +28,7 @@ const isUser = computed(() => props.role === 'user')
 
     <!-- Content -->
     <div class="min-w-0 flex-1">
-      <div class="prose prose-sm prose-invert max-w-none break-words">
+      <div class="prose prose-sm dark:prose-invert max-w-none break-words">
         <div v-if="content" v-html="renderMarkdown(content)" />
         <span v-if="isStreaming && !content" class="inline-flex gap-1">
           <span class="h-1.5 w-1.5 animate-bounce rounded-full bg-surface-500" style="animation-delay: 0ms" />
