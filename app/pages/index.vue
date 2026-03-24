@@ -1,13 +1,10 @@
 <script setup lang="ts">
 const { t } = useI18n()
-const { projects, fetchProjects, loading } = useProject()
+const { projects, fetchProjects } = useProject()
 
 await fetchProjects()
 
-// If projects exist, redirect to the first one
-if (projects.value.length > 0) {
-  navigateTo(`/projects/${projects.value[0].id}`)
-}
+const hasProjects = computed(() => projects.value.length > 0)
 </script>
 
 <template>
@@ -20,9 +17,31 @@ if (projects.value.length > 0) {
       </div>
       <h1 class="text-3xl font-bold text-surface-100">{{ t('app.name') }}</h1>
       <p class="mt-2 text-surface-400">{{ t('app.tagline') }}</p>
-      <NuxtLink to="/projects" class="btn-primary mt-8 inline-block">
-        {{ t('nav.newProject') }}
-      </NuxtLink>
+
+      <div class="mt-8 flex flex-col items-center gap-3">
+        <!-- Existing projects: go to project list -->
+        <NuxtLink v-if="hasProjects" to="/projects" class="btn-primary">
+          {{ t('nav.projects') }}
+        </NuxtLink>
+
+        <!-- Quick access to recent project -->
+        <NuxtLink
+          v-for="project in projects.slice(0, 3)"
+          :key="project.id"
+          :to="`/projects/${project.id}`"
+          class="btn-secondary w-64 justify-between"
+        >
+          <span class="truncate">{{ project.name }}</span>
+          <svg class="h-4 w-4 flex-shrink-0 text-surface-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+          </svg>
+        </NuxtLink>
+
+        <!-- No projects: create one -->
+        <NuxtLink v-if="!hasProjects" to="/projects" class="btn-primary">
+          {{ t('nav.newProject') }}
+        </NuxtLink>
+      </div>
     </div>
   </div>
 </template>
