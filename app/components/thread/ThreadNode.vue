@@ -84,7 +84,7 @@ const statusColors: Record<string, string> = {
           @select="(key: string) => key === 'add' ? emit('createChild', thread.id) : key === 'delete' ? emit('delete', thread.id) : null"
         >
           <template #trigger>
-            <button class="rounded p-0.5 hover:bg-surface-600" @click.stop>
+            <button class="rounded p-0.5 hover:bg-surface-600">
               <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M3 10a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zm5.5 0a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zm7-1.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3z" />
               </svg>

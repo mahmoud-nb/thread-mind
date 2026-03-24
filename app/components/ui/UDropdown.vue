@@ -37,7 +37,7 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
 </script>
 
 <template>
-  <div ref="dropdownRef" class="relative">
+  <div ref="dropdownRef" class="relative" @click.stop>
     <div @click="toggle">
       <slot name="trigger" />
     </div>

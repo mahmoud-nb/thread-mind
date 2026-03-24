@@ -98,7 +98,7 @@ function handleSelect(id: string) {
         />
         <div class="flex justify-end gap-2 pt-2">
           <UButton variant="ghost" @click="showCreate = false">{{ t('common.cancel') }}</UButton>
-          <UButton variant="primary" @click="handleCreate">{{ t('common.save') }}</UButton>
+          <UButton type="submit" variant="primary">{{ t('common.save') }}</UButton>
         </div>
       </form>
     </UDialog>

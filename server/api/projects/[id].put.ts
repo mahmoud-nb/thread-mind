@@ -22,7 +22,10 @@ export default defineEventHandler(async (event) => {
       ...(body.workMode && { workMode: body.workMode }),
       ...(body.settings && {
         settings: {
-          update: body.settings,
+          upsert: {
+            create: body.settings,
+            update: body.settings,
+          },
         },
       }),
     },

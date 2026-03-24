@@ -28,9 +28,30 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, message: 'Cannot send messages to read-only thread' })
   }
 
+  // Save user message first (always persist, even if provider fails)
+  await prisma.message.create({
+    data: {
+      threadId: body.threadId,
+      role: 'user',
+      content: body.content,
+    },
+  })
+
   // Resolve provider and model
-  const providerName = body.provider || thread.project.settings?.defaultProvider
-  const modelId = body.model || thread.project.settings?.defaultModel
+  let providerName = body.provider || thread.project.settings?.defaultProvider
+  let modelId = body.model || thread.project.settings?.defaultModel
+
+  // Fallback: find the first active configured provider
+  if (!providerName || !modelId) {
+    const activeProvider = await prisma.providerConfig.findFirst({
+      where: { isActive: true },
+    })
+    if (activeProvider) {
+      providerName = providerName || activeProvider.provider
+      const models = JSON.parse(activeProvider.models) as string[]
+      modelId = modelId || models[0] || null
+    }
+  }
 
   if (!providerName || !modelId) {
     throw createError({ statusCode: 400, message: 'No AI provider configured. Go to Settings to configure one.' })
@@ -45,15 +66,6 @@ export default defineEventHandler(async (event) => {
   }
 
   const aiProvider = createProvider(providerName, providerConfig.apiKey)
-
-  // Save user message
-  await prisma.message.create({
-    data: {
-      threadId: body.threadId,
-      role: 'user',
-      content: body.content,
-    },
-  })
 
   // Assemble context
   const context = await assembleContext(body.threadId, modelId)

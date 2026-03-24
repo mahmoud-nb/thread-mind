@@ -87,7 +87,7 @@ async function handleCreate() {
         </div>
         <div class="flex justify-end gap-2 pt-2">
           <UButton variant="ghost" @click="showCreate = false">{{ t('common.cancel') }}</UButton>
-          <UButton variant="primary" @click="handleCreate">{{ t('project.create') }}</UButton>
+          <UButton type="submit" variant="primary">{{ t('project.create') }}</UButton>
         </div>
       </form>
     </UDialog>

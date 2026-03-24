@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const { t, locale, setLocale } = useI18n()
 const { theme, setTheme } = useTheme()
+const { activeProject, updateProject } = useProject()
 
 interface ProviderDisplay {
   provider: string
@@ -44,15 +45,35 @@ async function testConnection(provider: string) {
 async function saveProvider(provider: string) {
   saving.value[provider] = true
   try {
+    // Auto-select first model if none selected
+    const models = selectedModels[provider]?.length > 0
+      ? selectedModels[provider]
+      : [availableModelsForProvider.value[provider]?.[0]?.id].filter(Boolean)
+    if (models.length > 0) selectedModels[provider] = models
+
     await $fetch('/api/providers', {
       method: 'POST',
       body: {
         provider,
         apiKey: apiKeys[provider],
-        models: selectedModels[provider],
+        models,
         isActive: true,
       },
     })
+
+    // Auto-set as default provider on active project if none configured
+    if (activeProject.value) {
+      const hasDefault = activeProject.value.settings?.defaultProvider && activeProject.value.settings?.defaultModel
+      if (!hasDefault && selectedModels[provider]?.length > 0) {
+        await updateProject(activeProject.value.id, {
+          settings: {
+            defaultProvider: provider,
+            defaultModel: selectedModels[provider][0],
+          },
+        })
+      }
+    }
+
     toast.value = { visible: true, message: t('settings.saved'), type: 'success' }
     await loadProviders()
   } catch {
