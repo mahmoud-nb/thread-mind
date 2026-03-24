@@ -16,7 +16,7 @@ async function handleSelectThread(threadId: string) {
 </script>
 
 <template>
-  <div class="flex h-full">
+  <div class="flex h-full overflow-hidden">
     <!-- Thread sidebar -->
     <div
       v-if="appStore.sidebarOpen"
