@@ -2,17 +2,24 @@ import type { AIProvider } from './types'
 import { AnthropicProvider } from './anthropic'
 import { OpenAIProvider } from './openai'
 import { GeminiProvider } from './gemini'
+import { getProviderDef } from './model-registry'
 
 export function createProvider(providerName: string, apiKey: string): AIProvider {
-  switch (providerName) {
+  const def = getProviderDef(providerName)
+
+  if (!def) {
+    throw new Error(`Unknown provider: ${providerName}`)
+  }
+
+  switch (def.type) {
     case 'anthropic':
       return new AnthropicProvider(apiKey)
-    case 'openai':
-      return new OpenAIProvider(apiKey)
+    case 'openai-compat':
+      return new OpenAIProvider(apiKey, def.baseURL, def.key)
     case 'gemini':
       return new GeminiProvider(apiKey)
     default:
-      throw new Error(`Unknown provider: ${providerName}`)
+      throw new Error(`Unsupported provider type: ${def.type}`)
   }
 }
 

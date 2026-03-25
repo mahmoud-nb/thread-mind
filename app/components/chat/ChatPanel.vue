@@ -27,16 +27,11 @@ const availableProviders = ref<ProviderOption[]>([])
 const selectedProvider = ref('')
 const selectedModel = ref('')
 
-const providerNames: Record<string, string> = {
-  anthropic: 'Claude',
-  openai: 'GPT',
-  gemini: 'Gemini',
-}
-
 async function loadProviders() {
   try {
     const configs = await $fetch<Array<{
       provider: string
+      name: string
       isActive: boolean
       hasApiKey: boolean
       models: string[]
@@ -47,7 +42,7 @@ async function loadProviders() {
       .filter(c => c.isActive && c.hasApiKey)
       .map(c => ({
         provider: c.provider,
-        name: providerNames[c.provider] || c.provider,
+        name: c.name,
         models: c.availableModels.filter(m => c.models.includes(m.id)),
       }))
 
@@ -59,8 +54,9 @@ async function loadProviders() {
       selectedProvider.value = defaultProvider
       selectedModel.value = defaultModel || availableProviders.value.find(p => p.provider === defaultProvider)?.models[0]?.id || ''
     } else if (availableProviders.value.length > 0) {
-      selectedProvider.value = availableProviders.value[0].provider
-      selectedModel.value = availableProviders.value[0].models[0]?.id || ''
+      const first = availableProviders.value[0]!
+      selectedProvider.value = first.provider
+      selectedModel.value = first.models[0]?.id || ''
     }
   } catch {}
 }

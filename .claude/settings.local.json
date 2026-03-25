@@ -10,7 +10,14 @@
       "Bash(xargs kill:*)",
       "Bash(netstat -ano)",
       "Bash(findstr :3000)",
-      "Bash(findstr LISTENING)"
+      "Bash(findstr LISTENING)",
+      "Bash(curl -s http://localhost:3000/api/projects)",
+      "Bash(curl -s http://localhost:3001/api/projects)",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(npx nuxi:*)",
+      "Bash(findstr \":3000 \")",
+      "Bash(findstr LISTEN)"
     ]
   }
 }

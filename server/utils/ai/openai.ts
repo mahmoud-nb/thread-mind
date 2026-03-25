@@ -1,12 +1,18 @@
 import OpenAI from 'openai'
 import type { AIProvider, ChatParams, ChatResponse, ChatMessage, StreamEvent, ModelInfo, ToolCall } from './types'
+import { getProviderDef } from './model-registry'
 
 export class OpenAIProvider implements AIProvider {
   readonly name = 'openai' as const
   private client: OpenAI
+  private providerKey: string
 
-  constructor(apiKey: string) {
-    this.client = new OpenAI({ apiKey })
+  constructor(apiKey: string, baseURL?: string, providerKey: string = 'openai') {
+    this.providerKey = providerKey
+    this.client = new OpenAI({
+      apiKey,
+      ...(baseURL ? { baseURL } : {}),
+    })
   }
 
   private mapMessages(messages: ChatMessage[], systemPrompt: string): OpenAI.ChatCompletionMessageParam[] {
@@ -141,39 +147,27 @@ export class OpenAIProvider implements AIProvider {
   }
 
   listModels(): ModelInfo[] {
-    return [
-      {
-        id: 'gpt-4o',
-        name: 'GPT-4o',
-        maxTokens: 128000,
-        supportsTools: true,
-        costPerInputToken: 0.0000025,
-        costPerOutputToken: 0.00001,
-      },
-      {
-        id: 'gpt-4o-mini',
-        name: 'GPT-4o Mini',
-        maxTokens: 128000,
-        supportsTools: true,
-        costPerInputToken: 0.00000015,
-        costPerOutputToken: 0.0000006,
-      },
-      {
-        id: 'o3-mini',
-        name: 'o3-mini',
-        maxTokens: 200000,
-        supportsTools: true,
-        costPerInputToken: 0.0000011,
-        costPerOutputToken: 0.0000044,
-      },
-    ]
+    const def = getProviderDef(this.providerKey)
+    if (!def) return []
+    return def.models.map(m => ({
+      id: m.id,
+      name: m.name,
+      maxTokens: m.maxTokens,
+      supportsTools: m.supportsTools,
+      costPerInputToken: m.costPerInputToken,
+      costPerOutputToken: m.costPerOutputToken,
+    }))
   }
 
   async validateApiKey(apiKey: string): Promise<boolean> {
     try {
-      const client = new OpenAI({ apiKey })
+      const def = getProviderDef(this.providerKey)
+      const client = new OpenAI({
+        apiKey,
+        ...(def?.baseURL ? { baseURL: def.baseURL } : {}),
+      })
       await client.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: def?.validationModel || 'gpt-4o-mini',
         max_tokens: 1,
         messages: [{ role: 'user', content: 'hi' }],
       })

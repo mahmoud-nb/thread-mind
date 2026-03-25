@@ -104,7 +104,7 @@ export default defineEventHandler(async (event) => {
         model: modelId,
         systemPrompt: context.systemPrompt,
         messages,
-        tools: context.tools,
+        tools: context.tools.length > 0 ? context.tools : undefined,
         maxTokens: 4096,
       })) {
         switch (streamEvent.type) {

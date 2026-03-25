@@ -1,5 +1,6 @@
 import { GoogleGenAI, type Content, type Tool, type Part } from '@google/genai'
 import type { AIProvider, ChatParams, ChatResponse, ChatMessage, StreamEvent, ModelInfo, ToolCall } from './types'
+import { getProviderDef } from './model-registry'
 
 export class GeminiProvider implements AIProvider {
   readonly name = 'gemini' as const
@@ -50,9 +51,35 @@ export class GeminiProvider implements AIProvider {
       functionDeclarations: tools.map(t => ({
         name: t.name,
         description: t.description,
-        parameters: t.inputSchema,
+        parameters: this.cleanSchemaForGemini(t.inputSchema),
       })),
     }]
+  }
+
+  /**
+   * Gemini is strict about JSON Schema:
+   * - No `additionalProperties`
+   * - `type` must be uppercase (STRING, NUMBER, BOOLEAN, OBJECT, ARRAY)
+   * - Properties must match Gemini's subset
+   */
+  private cleanSchemaForGemini(schema: Record<string, unknown>): Record<string, unknown> {
+    const cleaned: Record<string, unknown> = {}
+
+    for (const [key, value] of Object.entries(schema)) {
+      if (key === 'additionalProperties') continue // Gemini doesn't support this
+
+      if (key === 'properties' && typeof value === 'object' && value !== null) {
+        const props: Record<string, unknown> = {}
+        for (const [propName, propVal] of Object.entries(value as Record<string, unknown>)) {
+          props[propName] = this.cleanSchemaForGemini(propVal as Record<string, unknown>)
+        }
+        cleaned[key] = props
+      } else {
+        cleaned[key] = value
+      }
+    }
+
+    return cleaned
   }
 
   async chat(params: ChatParams): Promise<ChatResponse> {
@@ -108,6 +135,7 @@ export class GeminiProvider implements AIProvider {
 
     let totalInput = 0
     let totalOutput = 0
+    let hasToolCalls = false
 
     for await (const chunk of response) {
       if (chunk.candidates?.[0]?.content?.parts) {
@@ -116,6 +144,7 @@ export class GeminiProvider implements AIProvider {
             yield { type: 'text_delta', content: part.text }
           }
           if (part.functionCall) {
+            hasToolCalls = true
             yield {
               type: 'tool_call',
               id: `gemini-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -133,7 +162,7 @@ export class GeminiProvider implements AIProvider {
     }
 
     yield { type: 'usage', inputTokens: totalInput, outputTokens: totalOutput }
-    yield { type: 'stop', stopReason: 'end_turn' }
+    yield { type: 'stop', stopReason: hasToolCalls ? 'tool_use' : 'end_turn' }
   }
 
   estimateTokens(text: string): number {
@@ -142,31 +171,21 @@ export class GeminiProvider implements AIProvider {
   }
 
   listModels(): ModelInfo[] {
-    return [
-      {
-        id: 'gemini-2.5-flash',
-        name: 'Gemini 2.5 Flash',
-        maxTokens: 1000000,
-        supportsTools: true,
-        costPerInputToken: 0.00000015,
-        costPerOutputToken: 0.0000006,
-      },
-      {
-        id: 'gemini-2.5-pro',
-        name: 'Gemini 2.5 Pro',
-        maxTokens: 1000000,
-        supportsTools: true,
-        costPerInputToken: 0.00000125,
-        costPerOutputToken: 0.00001,
-      },
-    ]
+    const def = getProviderDef('gemini')
+    if (!def) return []
+    return def.models.map(m => ({
+      id: m.id, name: m.name, maxTokens: m.maxTokens,
+      supportsTools: m.supportsTools,
+      costPerInputToken: m.costPerInputToken, costPerOutputToken: m.costPerOutputToken,
+    }))
   }
 
   async validateApiKey(apiKey: string): Promise<boolean> {
     try {
+      const def = getProviderDef('gemini')
       const client = new GoogleGenAI({ apiKey })
       await client.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: def?.validationModel || 'gemini-2.5-flash',
         contents: [{ role: 'user', parts: [{ text: 'hi' }] }],
         config: { maxOutputTokens: 1 },
       })

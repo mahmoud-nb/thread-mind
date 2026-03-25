@@ -54,7 +54,7 @@ export interface ModelInfo {
 }
 
 export interface AIProvider {
-  readonly name: 'anthropic' | 'openai' | 'gemini'
+  readonly name: string
   chat(params: ChatParams): Promise<ChatResponse>
   chatStream(params: ChatParams): AsyncIterable<StreamEvent>
   estimateTokens(text: string): number

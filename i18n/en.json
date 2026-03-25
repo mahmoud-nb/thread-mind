@@ -19,8 +19,14 @@
     "team": "Team",
     "soloDesc": "Individual project, local data only",
     "teamDesc": "Team project, shared threads via git",
+    "edit": "Edit Project",
     "delete": "Delete Project",
+    "confirmDelete": "Delete Permanently",
     "deleteConfirm": "Are you sure you want to delete this project?",
+    "deleteWarning": "You are about to permanently delete the project \"{name}\". This action cannot be undone.",
+    "deleteThreads": "All threads and sub-threads will be deleted",
+    "deleteMessages": "All messages, tool calls, and token usage data will be lost",
+    "deleteMarkdown": "The .threadmind/ folder in the target directory will be removed",
     "noProjects": "No projects yet. Create one to get started.",
     "selectFolder": "Select folder"
   },
@@ -102,7 +108,11 @@
     "connectionSuccess": "Connection successful",
     "connectionFailed": "Connection failed",
     "save": "Save",
-    "saved": "Settings saved"
+    "saved": "Settings saved",
+    "active": "Active",
+    "inactive": "Inactive",
+    "disable": "Disable provider",
+    "providerDisabled": "Provider disabled"
   },
   "sync": {
     "export": "Export to .threadmind",

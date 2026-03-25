@@ -5,6 +5,8 @@ const { activeProject, updateProject } = useProject()
 
 interface ProviderDisplay {
   provider: string
+  name: string
+  color: string
   isActive: boolean
   hasApiKey: boolean
   models: string[]
@@ -12,64 +14,68 @@ interface ProviderDisplay {
 }
 
 const providers = ref<ProviderDisplay[]>([])
-const apiKeys = reactive<Record<string, string>>({ anthropic: '', openai: '', gemini: '' })
-const selectedModels = reactive<Record<string, string[]>>({ anthropic: [], openai: [], gemini: [] })
-const testResults = reactive<Record<string, boolean | null>>({ anthropic: null, openai: null, gemini: null })
+const apiKeys = reactive<Record<string, string>>({})
+const selectedModels = reactive<Record<string, string[]>>({})
+const testResults = reactive<Record<string, boolean | null>>({})
 const saving = ref<Record<string, boolean>>({})
 const toast = ref({ visible: false, message: '', type: 'success' as 'success' | 'error' })
-
-const allProviders = [
-  { key: 'anthropic', name: 'Anthropic (Claude)', color: 'text-orange-400' },
-  { key: 'openai', name: 'OpenAI (ChatGPT)', color: 'text-green-400' },
-  { key: 'gemini', name: 'Google (Gemini)', color: 'text-blue-400' },
-]
 
 async function loadProviders() {
   try {
     providers.value = await $fetch('/api/providers')
     for (const p of providers.value) {
-      selectedModels[p.provider] = p.models
+      selectedModels[p.provider] = p.models || []
+      if (!apiKeys[p.provider]) apiKeys[p.provider] = ''
+      testResults[p.provider] = null
     }
   } catch {}
 }
 
-async function testConnection(provider: string) {
-  testResults[provider] = null
-  const result = await $fetch('/api/providers/test', {
-    method: 'POST',
-    body: { provider, apiKey: apiKeys[provider] },
-  }) as { success: boolean }
-  testResults[provider] = result.success
+function toggleModel(providerKey: string, modelId: string) {
+  const current = selectedModels[providerKey] || []
+  if (current.includes(modelId)) {
+    selectedModels[providerKey] = current.filter(m => m !== modelId)
+  } else {
+    selectedModels[providerKey] = [...current, modelId]
+  }
 }
 
-async function saveProvider(provider: string) {
-  saving.value[provider] = true
+async function testConnection(provider: string) {
+  testResults[provider] = null
   try {
-    // Auto-select first model if none selected
-    const models = selectedModels[provider]?.length > 0
-      ? selectedModels[provider]
-      : [availableModelsForProvider.value[provider]?.[0]?.id].filter(Boolean)
-    if (models.length > 0) selectedModels[provider] = models
+    const result = await $fetch('/api/providers/test', {
+      method: 'POST',
+      body: { provider, apiKey: apiKeys[provider] },
+    }) as { success: boolean }
+    testResults[provider] = result.success
+  } catch {
+    testResults[provider] = false
+  }
+}
+
+async function saveProvider(providerKey: string) {
+  saving.value[providerKey] = true
+  try {
+    const models = selectedModels[providerKey]?.length > 0
+      ? selectedModels[providerKey]
+      : [providers.value.find(p => p.provider === providerKey)?.availableModels[0]?.id].filter(Boolean)
+    if (models.length > 0) selectedModels[providerKey] = models as string[]
 
     await $fetch('/api/providers', {
       method: 'POST',
       body: {
-        provider,
-        apiKey: apiKeys[provider],
+        provider: providerKey,
+        apiKey: apiKeys[providerKey],
         models,
         isActive: true,
       },
     })
 
-    // Auto-set as default provider on active project if none configured
     if (activeProject.value) {
       const hasDefault = activeProject.value.settings?.defaultProvider && activeProject.value.settings?.defaultModel
-      if (!hasDefault && selectedModels[provider]?.length > 0) {
+      if (!hasDefault && models.length > 0) {
         await updateProject(activeProject.value.id, {
-          settings: {
-            defaultProvider: provider,
-            defaultModel: selectedModels[provider][0],
-          },
+          settings: { defaultProvider: providerKey, defaultModel: models[0] as string },
         })
       }
     }
@@ -79,21 +85,29 @@ async function saveProvider(provider: string) {
   } catch {
     toast.value = { visible: true, message: t('common.error'), type: 'error' }
   } finally {
-    saving.value[provider] = false
+    saving.value[providerKey] = false
   }
 }
 
-const availableModelsForProvider = computed(() => {
-  const map: Record<string, Array<{ id: string; name: string }>> = {}
-  for (const p of providers.value) {
-    map[p.provider] = p.availableModels
+async function disableProvider(providerKey: string) {
+  try {
+    await $fetch('/api/providers', {
+      method: 'POST',
+      body: {
+        provider: providerKey,
+        apiKey: '',
+        models: [],
+        isActive: false,
+      },
+    })
+    apiKeys[providerKey] = ''
+    selectedModels[providerKey] = []
+    toast.value = { visible: true, message: t('settings.providerDisabled'), type: 'success' }
+    await loadProviders()
+  } catch {
+    toast.value = { visible: true, message: t('common.error'), type: 'error' }
   }
-  // Fallback for unconfigured providers
-  if (!map.anthropic) map.anthropic = [{ id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' }, { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5' }, { id: 'claude-opus-4-6', name: 'Claude Opus 4.6' }]
-  if (!map.openai) map.openai = [{ id: 'gpt-4o', name: 'GPT-4o' }, { id: 'gpt-4o-mini', name: 'GPT-4o Mini' }]
-  if (!map.gemini) map.gemini = [{ id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' }, { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' }]
-  return map
-})
+}
 
 await loadProviders()
 </script>
@@ -113,20 +127,8 @@ await loadProviders()
     <section class="card mb-6">
       <h2 class="text-sm font-medium text-surface-300 mb-3">{{ t('settings.language') }}</h2>
       <div class="flex gap-2">
-        <UButton
-          :variant="locale === 'en' ? 'primary' : 'secondary'"
-          size="sm"
-          @click="setLocale('en')"
-        >
-          English
-        </UButton>
-        <UButton
-          :variant="locale === 'fr' ? 'primary' : 'secondary'"
-          size="sm"
-          @click="setLocale('fr')"
-        >
-          Français
-        </UButton>
+        <UButton :variant="locale === 'en' ? 'primary' : 'secondary'" size="sm" @click="setLocale('en')">English</UButton>
+        <UButton :variant="locale === 'fr' ? 'primary' : 'secondary'" size="sm" @click="setLocale('fr')">Français</UButton>
       </div>
     </section>
 
@@ -134,34 +136,16 @@ await loadProviders()
     <section class="card mb-6">
       <h2 class="text-sm font-medium text-surface-300 mb-3">{{ t('settings.theme') }}</h2>
       <div class="flex gap-2">
-        <UButton
-          :variant="theme === 'light' ? 'primary' : 'secondary'"
-          size="sm"
-          @click="setTheme('light')"
-        >
-          <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
-          </svg>
+        <UButton :variant="theme === 'light' ? 'primary' : 'secondary'" size="sm" @click="setTheme('light')">
+          <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>
           {{ t('settings.light') }}
         </UButton>
-        <UButton
-          :variant="theme === 'dark' ? 'primary' : 'secondary'"
-          size="sm"
-          @click="setTheme('dark')"
-        >
-          <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
-          </svg>
+        <UButton :variant="theme === 'dark' ? 'primary' : 'secondary'" size="sm" @click="setTheme('dark')">
+          <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
           {{ t('settings.dark') }}
         </UButton>
-        <UButton
-          :variant="theme === 'system' ? 'primary' : 'secondary'"
-          size="sm"
-          @click="setTheme('system')"
-        >
-          <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
-          </svg>
+        <UButton :variant="theme === 'system' ? 'primary' : 'secondary'" size="sm" @click="setTheme('system')">
+          <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" /></svg>
           {{ t('settings.system') }}
         </UButton>
       </div>
@@ -171,22 +155,34 @@ await loadProviders()
     <section class="space-y-4">
       <h2 class="text-sm font-medium text-surface-300">{{ t('settings.providers') }}</h2>
 
-      <div v-for="p in allProviders" :key="p.key" class="card">
+      <div v-for="p in providers" :key="p.provider" class="card">
         <div class="flex items-center justify-between mb-3">
           <h3 class="font-medium" :class="p.color">{{ p.name }}</h3>
-          <UBadge
-            v-if="providers.find(pr => pr.provider === p.key)"
-            variant="active"
-          >
-            {{ t('settings.connectionSuccess') }}
-          </UBadge>
+          <div class="flex items-center gap-2">
+            <UBadge v-if="p.isActive && p.hasApiKey" variant="active">
+              {{ t('settings.active') }}
+            </UBadge>
+            <UBadge v-else variant="archived">
+              {{ t('settings.inactive') }}
+            </UBadge>
+            <button
+              v-if="p.isActive && p.hasApiKey"
+              class="rounded p-1 text-surface-500 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+              :title="t('settings.disable')"
+              @click="disableProvider(p.provider)"
+            >
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div class="space-y-3">
           <UInput
-            v-model="apiKeys[p.key]"
+            v-model="apiKeys[p.provider]"
             :label="t('settings.apiKey')"
-            :placeholder="t('settings.apiKeyPlaceholder')"
+            :placeholder="p.hasApiKey ? '••••••••' : t('settings.apiKeyPlaceholder')"
             type="password"
           />
 
@@ -195,11 +191,11 @@ await loadProviders()
             <label class="block text-xs font-medium text-surface-400 mb-2">{{ t('settings.models') }}</label>
             <div class="flex flex-wrap gap-2">
               <button
-                v-for="model in availableModelsForProvider[p.key] || []"
+                v-for="model in p.availableModels"
                 :key="model.id"
                 class="rounded-md border px-2.5 py-1 text-xs transition-colors cursor-pointer"
-                :class="selectedModels[p.key]?.includes(model.id) ? 'border-accent bg-accent/10 text-accent-300' : 'border-surface-700 text-surface-400 hover:border-surface-600'"
-                @click="selectedModels[p.key]?.includes(model.id) ? selectedModels[p.key] = selectedModels[p.key].filter(m => m !== model.id) : (selectedModels[p.key] = [...(selectedModels[p.key] || []), model.id])"
+                :class="selectedModels[p.provider]?.includes(model.id) ? 'border-accent bg-accent/10 text-accent-300' : 'border-surface-700 text-surface-400 hover:border-surface-600'"
+                @click="toggleModel(p.provider, model.id)"
               >
                 {{ model.name }}
               </button>
@@ -210,22 +206,22 @@ await loadProviders()
             <UButton
               variant="ghost"
               size="sm"
-              :disabled="!apiKeys[p.key]"
-              @click="testConnection(p.key)"
+              :disabled="!apiKeys[p.provider]"
+              @click="testConnection(p.provider)"
             >
               {{ t('settings.testConnection') }}
             </UButton>
-            <span v-if="testResults[p.key] === true" class="text-xs text-green-400">{{ t('settings.connectionSuccess') }}</span>
-            <span v-if="testResults[p.key] === false" class="text-xs text-red-400">{{ t('settings.connectionFailed') }}</span>
+            <span v-if="testResults[p.provider] === true" class="text-xs text-green-400">{{ t('settings.connectionSuccess') }}</span>
+            <span v-if="testResults[p.provider] === false" class="text-xs text-red-400">{{ t('settings.connectionFailed') }}</span>
 
             <div class="flex-1" />
 
             <UButton
               variant="primary"
               size="sm"
-              :disabled="!apiKeys[p.key]"
-              :loading="saving[p.key]"
-              @click="saveProvider(p.key)"
+              :disabled="!apiKeys[p.provider]"
+              :loading="saving[p.provider]"
+              @click="saveProvider(p.provider)"
             >
               {{ t('settings.save') }}
             </UButton>

@@ -57,6 +57,47 @@ export async function assembleContext(
   const systemParts: string[] = []
   const breakdown: ContextBreakdownSection[] = []
 
+  // Base system prompt with project context
+  const projectDir = thread.project.targetPath.replace(/\\/g, '/')
+  let basePrompt: string
+
+  if (mode === 'agent') {
+    basePrompt = [
+      `You are a senior software engineer assistant working on the project "${thread.project.name}".`,
+      `The project root directory is: ${projectDir}`,
+      '',
+      'You have access to file tools to interact with the project:',
+      '- **read_file**: Read file contents (always read before editing)',
+      '- **write_file**: Create or overwrite a file',
+      '- **edit_file**: Apply a targeted search-and-replace edit to a file',
+      '- **list_directory**: List files and folders in a directory',
+      '- **search_files**: Search for text/patterns across the project',
+      '',
+      'Guidelines:',
+      '- Always use list_directory or read_file first to understand the project structure before making changes.',
+      '- Use edit_file for small targeted changes, write_file for new files or full rewrites.',
+      '- All file paths are relative to the project root.',
+      '- Write clean, well-structured, production-quality code.',
+      '- Explain what you are doing and why before using tools.',
+    ].join('\n')
+  } else {
+    basePrompt = [
+      `You are a senior software engineer assistant helping with the project "${thread.project.name}".`,
+      `The project root directory is: ${projectDir}`,
+      '',
+      'You are in **Plan mode**: discuss, analyze, and plan — but you cannot modify files directly.',
+      'Provide detailed explanations, code suggestions, architecture advice, and implementation plans.',
+      'If the user wants you to create or modify files, ask them to switch to Agent mode.',
+    ].join('\n')
+  }
+
+  systemParts.push(basePrompt)
+  breakdown.push({
+    label: 'Base prompt',
+    text: basePrompt,
+    tokens: estimateTokens(basePrompt),
+  })
+
   // Project-level custom prompt
   if (thread.project.settings?.customPrompt) {
     systemParts.push(thread.project.settings.customPrompt)

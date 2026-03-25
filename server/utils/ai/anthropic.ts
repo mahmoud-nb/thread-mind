@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { AIProvider, ChatParams, ChatResponse, ChatMessage, StreamEvent, ModelInfo, ToolCall } from './types'
+import { getProviderDef } from './model-registry'
 
 export class AnthropicProvider implements AIProvider {
   readonly name = 'anthropic' as const
@@ -163,39 +164,21 @@ export class AnthropicProvider implements AIProvider {
   }
 
   listModels(): ModelInfo[] {
-    return [
-      {
-        id: 'claude-sonnet-4-20250514',
-        name: 'Claude Sonnet 4',
-        maxTokens: 200000,
-        supportsTools: true,
-        costPerInputToken: 0.000003,
-        costPerOutputToken: 0.000015,
-      },
-      {
-        id: 'claude-haiku-4-5-20251001',
-        name: 'Claude Haiku 4.5',
-        maxTokens: 200000,
-        supportsTools: true,
-        costPerInputToken: 0.0000008,
-        costPerOutputToken: 0.000004,
-      },
-      {
-        id: 'claude-opus-4-6',
-        name: 'Claude Opus 4.6',
-        maxTokens: 200000,
-        supportsTools: true,
-        costPerInputToken: 0.000015,
-        costPerOutputToken: 0.000075,
-      },
-    ]
+    const def = getProviderDef('anthropic')
+    if (!def) return []
+    return def.models.map(m => ({
+      id: m.id, name: m.name, maxTokens: m.maxTokens,
+      supportsTools: m.supportsTools,
+      costPerInputToken: m.costPerInputToken, costPerOutputToken: m.costPerOutputToken,
+    }))
   }
 
   async validateApiKey(apiKey: string): Promise<boolean> {
     try {
+      const def = getProviderDef('anthropic')
       const client = new Anthropic({ apiKey })
       await client.messages.create({
-        model: 'claude-haiku-4-5-20251001',
+        model: def?.validationModel || 'claude-haiku-4-5-20251001',
         max_tokens: 1,
         messages: [{ role: 'user', content: 'hi' }],
       })
