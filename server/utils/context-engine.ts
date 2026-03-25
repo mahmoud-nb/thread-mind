@@ -36,7 +36,8 @@ export interface AssembledContext {
 
 export async function assembleContext(
   threadId: string,
-  modelId: string
+  modelId: string,
+  mode: 'plan' | 'agent' = 'agent'
 ): Promise<AssembledContext> {
   const prisma = usePrisma()
 
@@ -107,7 +108,8 @@ export async function assembleContext(
   // 4. Build message history within token budget
   const maxContext = getMaxContextTokens(modelId)
   const responseReserve = 4096
-  const toolsTokens = estimateTokens(JSON.stringify(FILE_TOOLS))
+  const activeTools = mode === 'agent' ? FILE_TOOLS : []
+  const toolsTokens = activeTools.length > 0 ? estimateTokens(JSON.stringify(activeTools)) : 0
   const messageBudget = maxContext - systemTokens - responseReserve - toolsTokens
 
   const allMessages = thread.messages.filter(m => m.role !== 'system')
@@ -144,7 +146,7 @@ export async function assembleContext(
   return {
     systemPrompt,
     messages: chatMessages,
-    tools: FILE_TOOLS,
+    tools: activeTools,
     tokenEstimate: actualTokens,
     tokensSavedVsFullHistory: tokensSaved,
     breakdown,

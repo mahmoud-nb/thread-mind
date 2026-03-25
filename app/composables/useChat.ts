@@ -14,13 +14,18 @@ interface ToolCallDisplay {
   input: Record<string, unknown>
   result?: string
   isError?: boolean
+  pending?: boolean
+  rejected?: boolean
 }
+
+export type ChatMode = 'plan' | 'agent'
 
 export function useChat() {
   const messages = ref<ChatMessageDisplay[]>([])
   const isStreaming = ref(false)
   const streamingContent = ref('')
   const toolCalls = ref<ToolCallDisplay[]>([])
+  const pendingApprovals = ref<ToolCallDisplay[]>([])
   const lastTokenUsage = ref<{
     inputTokens: number
     outputTokens: number
@@ -33,11 +38,19 @@ export function useChat() {
     messages.value = threadMessages.filter(m => m.role === 'user' || m.role === 'assistant')
   }
 
-  async function sendMessage(threadId: string, content: string, provider?: string, model?: string) {
+  async function sendMessage(
+    threadId: string,
+    content: string,
+    provider?: string,
+    model?: string,
+    mode: ChatMode = 'plan',
+    approvedToolCalls?: string[]
+  ) {
     error.value = null
     isStreaming.value = true
     streamingContent.value = ''
     toolCalls.value = []
+    pendingApprovals.value = []
 
     // Add user message immediately
     messages.value.push({
@@ -57,7 +70,7 @@ export function useChat() {
       const response = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ threadId, content, provider, model }),
+        body: JSON.stringify({ threadId, content, provider, model, mode, approvedToolCalls }),
       })
 
       if (!response.ok) {
@@ -124,14 +137,34 @@ export function useChat() {
         })
         break
 
+      case 'tool_approval_request':
+        pendingApprovals.value.push({
+          id: data.id,
+          name: data.name,
+          input: data.input,
+          pending: true,
+        })
+        toolCalls.value.push({
+          id: data.id,
+          name: data.name,
+          input: data.input,
+          pending: true,
+        })
+        break
+
       case 'tool_result': {
         const tc = toolCalls.value.find(t => t.id === data.id)
         if (tc) {
           tc.result = data.content
           tc.isError = data.isError
+          if (data.pending) tc.pending = true
         }
         break
       }
+
+      case 'awaiting_approval':
+        // Stream paused, waiting for user to approve/reject
+        break
 
       case 'message_complete':
         if (lastMsg?.isStreaming) {
@@ -146,8 +179,38 @@ export function useChat() {
         break
 
       case 'summary_stale':
-        // Could emit an event or set a flag
         break
+    }
+  }
+
+  async function approveTool(threadId: string, toolCallId: string, approved: boolean) {
+    try {
+      const result = await $fetch<{
+        success: boolean
+        rejected: boolean
+        content: string
+        isError?: boolean
+      }>('/api/chat/approve-tool', {
+        method: 'POST',
+        body: { threadId, toolCallId, approved },
+      })
+
+      // Update the tool call display
+      const tc = toolCalls.value.find(t => t.id === toolCallId)
+      if (tc) {
+        tc.pending = false
+        tc.rejected = !approved
+        tc.result = result.content
+        tc.isError = result.isError || false
+      }
+
+      // Remove from pending
+      pendingApprovals.value = pendingApprovals.value.filter(t => t.id !== toolCallId)
+
+      return result
+    } catch (err: any) {
+      error.value = err.message
+      return null
     }
   }
 
@@ -164,6 +227,7 @@ export function useChat() {
     messages.value = []
     streamingContent.value = ''
     toolCalls.value = []
+    pendingApprovals.value = []
     lastTokenUsage.value = null
     error.value = null
   }
@@ -173,10 +237,12 @@ export function useChat() {
     isStreaming,
     streamingContent,
     toolCalls,
+    pendingApprovals,
     lastTokenUsage,
     error,
     loadMessages,
     sendMessage,
+    approveTool,
     togglePin,
     clear,
   }

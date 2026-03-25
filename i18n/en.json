@@ -59,7 +59,17 @@
     "noMessages": "Start a conversation in this thread",
     "pinMessage": "Pin message",
     "unpinMessage": "Unpin message",
-    "pinnedInfo": "Pinned messages are included in child thread context"
+    "pinnedInfo": "Pinned messages are included in child thread context",
+    "configureProvider": "⚙ Configure an AI provider to start chatting",
+    "planMode": "Plan",
+    "agentMode": "Agent",
+    "planDesc": "Conversation only — the AI cannot modify your files",
+    "agentDesc": "The AI can read and modify files in your project (with your permission)",
+    "awaitingApproval": "Waiting for approval",
+    "approvalPrompt": "Allow {tool} on {path}?",
+    "approve": "Allow",
+    "reject": "Deny",
+    "rejected": "Denied"
   },
   "files": {
     "title": "File Explorer",

@@ -59,7 +59,17 @@
     "noMessages": "Démarrez une conversation dans ce thread",
     "pinMessage": "Épingler le message",
     "unpinMessage": "Désépingler le message",
-    "pinnedInfo": "Les messages épinglés sont inclus dans le contexte des sous-threads"
+    "pinnedInfo": "Les messages épinglés sont inclus dans le contexte des sous-threads",
+    "configureProvider": "⚙ Configurez un fournisseur IA pour commencer à discuter",
+    "planMode": "Plan",
+    "agentMode": "Agent",
+    "planDesc": "Conversation uniquement — l'IA ne peut pas modifier vos fichiers",
+    "agentDesc": "L'IA peut lire et modifier les fichiers du projet (avec votre permission)",
+    "awaitingApproval": "En attente d'approbation",
+    "approvalPrompt": "Autoriser {tool} sur {path} ?",
+    "approve": "Autoriser",
+    "reject": "Refuser",
+    "rejected": "Refusé"
   },
   "files": {
     "title": "Explorateur de Fichiers",

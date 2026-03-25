@@ -10,6 +10,8 @@ export default defineEventHandler(async (event) => {
     content: string
     provider?: string
     model?: string
+    mode?: 'plan' | 'agent'
+    approvedToolCalls?: string[] // IDs of previously approved tool calls
   }>(event)
 
   if (!body.threadId || !body.content) {
@@ -67,8 +69,10 @@ export default defineEventHandler(async (event) => {
 
   const aiProvider = createProvider(providerName, providerConfig.apiKey)
 
+  const chatMode = body.mode || 'plan'
+
   // Assemble context
-  const context = await assembleContext(body.threadId, modelId)
+  const context = await assembleContext(body.threadId, modelId, chatMode)
 
   // Set up SSE
   setResponseHeaders(event, {
@@ -146,13 +150,55 @@ export default defineEventHandler(async (event) => {
         toolCalls: iterationToolCalls,
       })
 
+      // Classify tools: read-only vs write (need permission)
+      const WRITE_TOOLS = ['write_file', 'edit_file']
+      const approvedIds = new Set(body.approvedToolCalls || [])
+
       // Execute each tool call and add results
       for (const tc of iterationToolCalls) {
+        const needsApproval = WRITE_TOOLS.includes(tc.name) && !approvedIds.has(tc.id)
+
+        if (needsApproval) {
+          // Send approval request to client — pause execution for this tool
+          send('tool_approval_request', {
+            id: tc.id,
+            name: tc.name,
+            input: tc.input,
+          })
+
+          // Save the pending tool call
+          await prisma.message.create({
+            data: {
+              threadId: body.threadId,
+              role: 'tool_call',
+              content: JSON.stringify({ name: tc.name, input: tc.input }),
+              metadata: JSON.stringify({ toolCallId: tc.id, pending: true }),
+            },
+          })
+
+          // Add a placeholder result so the AI knows it's pending
+          const pendingMsg = `⏳ Waiting for user approval to execute ${tc.name} on "${tc.input.path}"`
+          messages.push({
+            role: 'tool_result',
+            content: pendingMsg,
+            toolCallId: tc.id,
+          })
+
+          send('tool_result', {
+            id: tc.id,
+            name: tc.name,
+            content: pendingMsg,
+            isError: false,
+            pending: true,
+          })
+          continue
+        }
+
         const result = await executeTool(tc.name, tc.input, thread.project.targetPath)
         send('tool_result', {
           id: tc.id,
           name: tc.name,
-          content: result.content.slice(0, 2000), // Limit for SSE display
+          content: result.content.slice(0, 2000),
           isError: result.isError,
         })
 
@@ -179,6 +225,13 @@ export default defineEventHandler(async (event) => {
             metadata: JSON.stringify({ toolCallId: tc.id, isError: result.isError }),
           },
         })
+      }
+
+      // If there are pending approvals, stop the loop and wait
+      const hasPending = iterationToolCalls.some(tc => WRITE_TOOLS.includes(tc.name) && !approvedIds.has(tc.id))
+      if (hasPending) {
+        send('awaiting_approval', { toolIds: iterationToolCalls.filter(tc => WRITE_TOOLS.includes(tc.name) && !approvedIds.has(tc.id)).map(tc => tc.id) })
+        break
       }
 
       // Continue the loop for the AI to process tool results
