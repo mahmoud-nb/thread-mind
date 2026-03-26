@@ -20,6 +20,7 @@ const chatMode = ref<'plan' | 'agent'>('plan')
 interface ProviderOption {
   provider: string
   name: string
+  color: string
   models: Array<{ id: string; name: string }>
 }
 
@@ -32,6 +33,7 @@ async function loadProviders() {
     const configs = await $fetch<Array<{
       provider: string
       name: string
+      color: string
       isActive: boolean
       hasApiKey: boolean
       models: string[]
@@ -43,6 +45,7 @@ async function loadProviders() {
       .map(c => ({
         provider: c.provider,
         name: c.name,
+        color: c.color,
         models: c.availableModels.filter(m => c.models.includes(m.id)),
       }))
 
@@ -60,18 +63,6 @@ async function loadProviders() {
     }
   } catch {}
 }
-
-const currentProviderModels = computed(() =>
-  availableProviders.value.find(p => p.provider === selectedProvider.value)?.models || []
-)
-
-// When provider changes, auto-select first model
-watch(selectedProvider, (newProvider) => {
-  const models = availableProviders.value.find(p => p.provider === newProvider)?.models || []
-  if (models.length > 0 && !models.find(m => m.id === selectedModel.value)) {
-    selectedModel.value = models[0].id
-  }
-})
 
 // Persist selection to project settings
 watch([selectedProvider, selectedModel], async ([provider, model]) => {
@@ -295,33 +286,14 @@ async function handleGenerateSummary() {
         <div class="h-4 w-px bg-surface-700" />
 
         <!-- Provider/Model selector -->
-        <template v-if="availableProviders.length > 0">
-          <div class="flex items-center gap-0.5 rounded-lg bg-surface-800 p-0.5">
-            <button
-              v-for="p in availableProviders"
-              :key="p.provider"
-              class="rounded-md px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer"
-              :class="selectedProvider === p.provider
-                ? 'bg-accent text-white shadow-sm'
-                : 'text-surface-400 hover:text-surface-200'"
-              @click="selectedProvider = p.provider"
-            >
-              {{ p.name }}
-            </button>
-          </div>
-          <select
-            v-model="selectedModel"
-            class="rounded-md border border-surface-700 bg-surface-800 px-2 py-1 text-xs text-surface-300 focus:border-accent focus:outline-none cursor-pointer"
-          >
-            <option
-              v-for="m in currentProviderModels"
-              :key="m.id"
-              :value="m.id"
-            >
-              {{ m.name }}
-            </option>
-          </select>
-        </template>
+        <ModelSelector
+          v-if="availableProviders.length > 0"
+          :providers="availableProviders"
+          :selected-provider="selectedProvider"
+          :selected-model="selectedModel"
+          @update:selected-provider="selectedProvider = $event"
+          @update:selected-model="selectedModel = $event"
+        />
         <NuxtLink v-else to="/settings" class="text-xs text-accent hover:underline">
           {{ t('chat.configureProvider') }}
         </NuxtLink>

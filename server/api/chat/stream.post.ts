@@ -12,9 +12,10 @@ export default defineEventHandler(async (event) => {
     model?: string
     mode?: 'plan' | 'agent'
     approvedToolCalls?: string[] // IDs of previously approved tool calls
+    continueAfterApproval?: boolean // Resume AI loop after tool approvals
   }>(event)
 
-  if (!body.threadId || !body.content) {
+  if (!body.threadId || (!body.content && !body.continueAfterApproval)) {
     throw createError({ statusCode: 400, message: 'threadId and content are required' })
   }
 
@@ -30,14 +31,16 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, message: 'Cannot send messages to read-only thread' })
   }
 
-  // Save user message first (always persist, even if provider fails)
-  await prisma.message.create({
-    data: {
-      threadId: body.threadId,
-      role: 'user',
-      content: body.content,
-    },
-  })
+  // Save user message first (skip in continuation mode — no new user message)
+  if (!body.continueAfterApproval) {
+    await prisma.message.create({
+      data: {
+        threadId: body.threadId,
+        role: 'user',
+        content: body.content,
+      },
+    })
+  }
 
   // Resolve provider and model
   let providerName = body.provider || thread.project.settings?.defaultProvider
@@ -238,35 +241,49 @@ export default defineEventHandler(async (event) => {
       iterationToolCalls = []
     }
 
-    // Save final assistant message
-    const assistantMsg = await prisma.message.create({
-      data: {
-        threadId: body.threadId,
-        role: 'assistant',
-        content: fullAssistantContent,
-        metadata: JSON.stringify({
+    // Save final assistant message (only if there's content or tool calls)
+    let assistantMsgId: string | null = null
+    if (fullAssistantContent || allToolCalls.length > 0) {
+      const assistantMsg = await prisma.message.create({
+        data: {
+          threadId: body.threadId,
+          role: 'assistant',
+          content: fullAssistantContent,
+          metadata: JSON.stringify({
+            provider: providerName,
+            model: modelId,
+            toolCalls: allToolCalls,
+          }),
+        },
+      })
+      assistantMsgId = assistantMsg.id
+
+      // Track token usage
+      const cost = estimateCost(modelId, totalInputTokens, totalOutputTokens)
+      await prisma.tokenUsage.create({
+        data: {
+          projectId: thread.projectId,
+          threadId: body.threadId,
+          messageId: assistantMsg.id,
           provider: providerName,
           model: modelId,
-          toolCalls: allToolCalls,
-        }),
-      },
-    })
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
+          estimatedCostUsd: cost,
+          contextTokensSaved: context.tokensSavedVsFullHistory,
+        },
+      })
 
-    // Track token usage
-    const cost = estimateCost(modelId, totalInputTokens, totalOutputTokens)
-    await prisma.tokenUsage.create({
-      data: {
-        projectId: thread.projectId,
-        threadId: body.threadId,
+      send('message_complete', {
         messageId: assistantMsg.id,
-        provider: providerName,
-        model: modelId,
-        inputTokens: totalInputTokens,
-        outputTokens: totalOutputTokens,
-        estimatedCostUsd: cost,
-        contextTokensSaved: context.tokensSavedVsFullHistory,
-      },
-    })
+        tokenUsage: {
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
+          cost,
+          tokensSaved: context.tokensSavedVsFullHistory,
+        },
+      })
+    }
 
     // Check summary staleness
     const allMessages = await prisma.message.findMany({
@@ -277,16 +294,6 @@ export default defineEventHandler(async (event) => {
     if (thread.summaryHash !== currentHash) {
       send('summary_stale', { threadId: body.threadId })
     }
-
-    send('message_complete', {
-      messageId: assistantMsg.id,
-      tokenUsage: {
-        inputTokens: totalInputTokens,
-        outputTokens: totalOutputTokens,
-        cost,
-        tokensSaved: context.tokensSavedVsFullHistory,
-      },
-    })
   } catch (err: any) {
     send('error', { message: err.message || 'An error occurred' })
   }
