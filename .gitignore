@@ -1,6 +1,7 @@
 node_modules
 .nuxt
 .output
+.claude/
 dist
 *.db
 *.db-journal

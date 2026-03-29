@@ -4,7 +4,10 @@
   "description": "AI-powered thread-based development assistant with context optimization and hierarchical thread management",
   "type": "module",
   "license": "MIT",
-  "author": "ThreadMind Contributors",
+  "author": {
+    "name": "Mahmoud NBET",
+    "email": "mahmoud.nb@gmail.com"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/thread-mind/thread-mind.git"
