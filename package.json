@@ -34,5 +34,8 @@
     "open": "^11.0.0",
     "openai": "^6.32.0",
     "prisma": "^6.19.2"
+  },
+  "optionalDependencies": {
+    "@rolldown/binding-win32-x64-msvc": "^1.0.0-rc.12"
   }
 }

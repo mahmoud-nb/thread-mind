@@ -4,6 +4,7 @@ const route = useRoute()
 const { totals, fetchUsage } = useTokenTracker()
 const { activeProject } = useProject()
 const { theme, isDark, setTheme } = useTheme()
+const appStore = useAppStore()
 
 watch(activeProject, (p) => {
   if (p) fetchUsage(p.id)
@@ -66,6 +67,17 @@ const themeIcon = computed(() => {
           {{ locale === 'en' ? 'FR' : 'EN' }}
         </button>
 
+        <!-- Documentation -->
+        <button
+          class="btn-ghost btn-sm"
+          :title="t('docs.title')"
+          @click="appStore.toggleDocPanel()"
+        >
+          <svg class="h-4 w-4" :class="{ 'text-accent': appStore.docPanelOpen }" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+          </svg>
+        </button>
+
         <!-- Settings -->
         <NuxtLink to="/settings" class="btn-ghost btn-sm">
           <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -76,9 +88,33 @@ const themeIcon = computed(() => {
       </div>
     </header>
 
-    <!-- Main content -->
-    <main class="flex-1 overflow-auto">
-      <slot />
-    </main>
+    <!-- Main content + Doc panel -->
+    <div class="flex flex-1 overflow-hidden">
+      <main class="flex-1 overflow-auto">
+        <slot />
+      </main>
+
+      <!-- Documentation slide-out panel (global) -->
+      <Transition name="doc-slide">
+        <div
+          v-if="appStore.docPanelOpen"
+          class="w-96 flex-shrink-0 border-l border-surface-800 bg-surface-900 overflow-hidden"
+        >
+          <DocsDocPanel />
+        </div>
+      </Transition>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.doc-slide-enter-active,
+.doc-slide-leave-active {
+  transition: width 0.2s ease, opacity 0.2s ease;
+}
+.doc-slide-enter-from,
+.doc-slide-leave-to {
+  width: 0;
+  opacity: 0;
+}
+</style>
