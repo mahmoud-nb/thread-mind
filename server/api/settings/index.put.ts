@@ -3,6 +3,7 @@ export default defineEventHandler(async (event) => {
     language?: string
     theme?: string
     openBrowser?: boolean
+    authorName?: string
   }>(event)
 
   const prisma = usePrisma()

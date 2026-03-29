@@ -48,6 +48,8 @@ model Thread {
   updatedAt    DateTime     @updatedAt
   messages     Message[]
   tokenUsages  TokenUsage[]
+  references   ThreadReference[] @relation("ThreadReferences")
+  referencedBy ThreadReference[] @relation("ReferencedBy")
 
   @@index([projectId])
   @@index([parentId])
@@ -101,4 +103,18 @@ model AppSettings {
   language    String  @default("en")
   theme       String  @default("dark")
   openBrowser Boolean @default(true)
+  authorName  String  @default("")
+}
+
+model ThreadReference {
+  id           String   @id @default(cuid())
+  threadId     String
+  thread       Thread   @relation("ThreadReferences", fields: [threadId], references: [id], onDelete: Cascade)
+  referencedId String
+  referenced   Thread   @relation("ReferencedBy", fields: [referencedId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@unique([threadId, referencedId])
+  @@index([threadId])
+  @@index([referencedId])
 }

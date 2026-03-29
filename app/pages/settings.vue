@@ -20,6 +20,32 @@ const testResults = reactive<Record<string, boolean | null>>({})
 const saving = ref<Record<string, boolean>>({})
 const toast = ref({ visible: false, message: '', type: 'success' as 'success' | 'error' })
 
+// Author identity
+const authorName = ref('')
+const savingAuthor = ref(false)
+
+async function loadSettings() {
+  try {
+    const settings = await $fetch<{ authorName?: string }>('/api/settings')
+    authorName.value = settings.authorName || ''
+  } catch {}
+}
+
+async function saveAuthorName() {
+  savingAuthor.value = true
+  try {
+    await $fetch('/api/settings', {
+      method: 'PUT',
+      body: { authorName: authorName.value.trim() },
+    })
+    toast.value = { visible: true, message: t('settings.saved'), type: 'success' }
+  } catch {
+    toast.value = { visible: true, message: t('common.error'), type: 'error' }
+  } finally {
+    savingAuthor.value = false
+  }
+}
+
 async function loadProviders() {
   try {
     providers.value = await $fetch('/api/providers')
@@ -109,7 +135,7 @@ async function disableProvider(providerKey: string) {
   }
 }
 
-await loadProviders()
+await Promise.all([loadProviders(), loadSettings()])
 </script>
 
 <template>
@@ -147,6 +173,27 @@ await loadProviders()
         <UButton :variant="theme === 'system' ? 'primary' : 'secondary'" size="sm" @click="setTheme('system')">
           <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" /></svg>
           {{ t('settings.system') }}
+        </UButton>
+      </div>
+    </section>
+
+    <!-- Author Identity -->
+    <section class="card mb-6">
+      <h2 class="text-sm font-medium text-surface-300 mb-1">{{ t('settings.authorName') }}</h2>
+      <p class="text-xs text-surface-500 mb-3">{{ t('settings.authorNameHelp') }}</p>
+      <div class="flex gap-2">
+        <UInput
+          v-model="authorName"
+          :placeholder="t('settings.authorNamePlaceholder')"
+          class="flex-1"
+        />
+        <UButton
+          variant="primary"
+          size="sm"
+          :loading="savingAuthor"
+          @click="saveAuthorName"
+        >
+          {{ t('settings.save') }}
         </UButton>
       </div>
     </section>

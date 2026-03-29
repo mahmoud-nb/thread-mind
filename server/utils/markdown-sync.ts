@@ -3,6 +3,7 @@ import { readFile, writeFile, readdir, mkdir, rm } from 'fs/promises'
 import { existsSync } from 'fs'
 
 const THREADMIND_DIR = '.threadmind'
+const AUTHORS_DIR = 'authors'
 
 interface ThreadExport {
   id: string
@@ -30,8 +31,13 @@ interface ThreadMeta {
   updatedAt: string
 }
 
+/**
+ * Export threads to .threadmind/authors/{authorName}/
+ * Only exports threads owned by the local author.
+ */
 export async function exportToThreadmind(projectId: string): Promise<void> {
   const prisma = usePrisma()
+  const authorName = await getAuthorName()
 
   const project = await prisma.project.findUniqueOrThrow({
     where: { id: projectId },
@@ -42,19 +48,24 @@ export async function exportToThreadmind(projectId: string): Promise<void> {
     },
   })
 
-  const threadmindDir = resolve(project.targetPath, THREADMIND_DIR)
-  const threadsDir = join(threadmindDir, 'threads')
+  // Only export threads owned by the local author (or legacy threads with no author)
+  const ownThreads = project.threads.filter(
+    t => !t.sourceAuthor || t.sourceAuthor === authorName
+  )
+
+  const authorDir = resolve(project.targetPath, THREADMIND_DIR, AUTHORS_DIR, authorName)
+  const threadsDir = join(authorDir, 'threads')
 
   // Ensure directories exist
   await mkdir(threadsDir, { recursive: true })
 
   // Write tree.json
   const treeJson: TreeJson = {
-    version: 1,
+    version: 2,
     projectName: project.name,
     exportedAt: new Date().toISOString(),
-    exportedBy: 'local',
-    threads: project.threads.map(t => ({
+    exportedBy: authorName,
+    threads: ownThreads.map(t => ({
       id: t.id,
       parentId: t.parentId,
       title: t.title,
@@ -64,13 +75,13 @@ export async function exportToThreadmind(projectId: string): Promise<void> {
   }
 
   await writeFile(
-    join(threadmindDir, 'tree.json'),
+    join(authorDir, 'tree.json'),
     JSON.stringify(treeJson, null, 2),
     'utf-8'
   )
 
   // Write each thread's meta.json and summary.md
-  for (const thread of project.threads) {
+  for (const thread of ownThreads) {
     const threadDir = join(threadsDir, thread.id)
     await mkdir(threadDir, { recursive: true })
 
@@ -79,7 +90,7 @@ export async function exportToThreadmind(projectId: string): Promise<void> {
       title: thread.title,
       status: thread.status,
       systemPrompt: thread.systemPrompt,
-      author: thread.sourceAuthor || 'local',
+      author: authorName,
       createdAt: thread.createdAt.toISOString(),
       updatedAt: thread.updatedAt.toISOString(),
     }
@@ -96,10 +107,10 @@ export async function exportToThreadmind(projectId: string): Promise<void> {
     }
   }
 
-  // Clean up threads that no longer exist
+  // Clean up threads that no longer exist in author's directory
   if (existsSync(threadsDir)) {
     const existingDirs = await readdir(threadsDir)
-    const threadIds = new Set(project.threads.map(t => t.id))
+    const threadIds = new Set(ownThreads.map(t => t.id))
 
     for (const dir of existingDirs) {
       if (!threadIds.has(dir)) {
@@ -109,29 +120,77 @@ export async function exportToThreadmind(projectId: string): Promise<void> {
   }
 }
 
+/**
+ * Import threads from .threadmind/authors/
+ * Scans all author directories except the local author's.
+ * Creates/updates threads as read-only with the remote author's identity.
+ */
 export async function importFromThreadmind(projectId: string): Promise<{ imported: number; updated: number }> {
   const prisma = usePrisma()
+  const localAuthor = await getAuthorName()
 
   const project = await prisma.project.findUniqueOrThrow({
     where: { id: projectId },
   })
 
-  const threadmindDir = resolve(project.targetPath, THREADMIND_DIR)
-  const treeJsonPath = join(threadmindDir, 'tree.json')
+  const authorsDir = resolve(project.targetPath, THREADMIND_DIR, AUTHORS_DIR)
 
-  if (!existsSync(treeJsonPath)) {
-    return { imported: 0, updated: 0 }
+  // Also support legacy flat structure
+  const legacyTreePath = resolve(project.targetPath, THREADMIND_DIR, 'tree.json')
+
+  let totalImported = 0
+  let totalUpdated = 0
+
+  // Import from author-scoped directories
+  if (existsSync(authorsDir)) {
+    const authorDirs = await readdir(authorsDir)
+
+    for (const authorDirName of authorDirs) {
+      // Skip local author's directory — those threads are already in DB
+      if (authorDirName === localAuthor) continue
+
+      const authorPath = join(authorsDir, authorDirName)
+      const treeJsonPath = join(authorPath, 'tree.json')
+
+      if (!existsSync(treeJsonPath)) continue
+
+      const result = await importAuthorThreads(
+        prisma, projectId, authorPath, authorDirName
+      )
+      totalImported += result.imported
+      totalUpdated += result.updated
+    }
   }
 
+  // Backward compat: import from legacy flat structure
+  if (existsSync(legacyTreePath) && !existsSync(authorsDir)) {
+    const threadmindDir = resolve(project.targetPath, THREADMIND_DIR)
+    const result = await importAuthorThreads(prisma, projectId, threadmindDir, null)
+    totalImported += result.imported
+    totalUpdated += result.updated
+  }
+
+  return { imported: totalImported, updated: totalUpdated }
+}
+
+async function importAuthorThreads(
+  prisma: ReturnType<typeof usePrisma>,
+  projectId: string,
+  authorPath: string,
+  authorName: string | null,
+): Promise<{ imported: number; updated: number }> {
+  const treeJsonPath = join(authorPath, 'tree.json')
   const treeContent = await readFile(treeJsonPath, 'utf-8')
   const treeJson: TreeJson = JSON.parse(treeContent)
+
+  const effectiveAuthor = authorName || treeJson.exportedBy || 'unknown'
 
   let imported = 0
   let updated = 0
 
   // Process threads in order (parents first)
   for (const threadEntry of treeJson.threads) {
-    const threadDir = join(threadmindDir, 'threads', threadEntry.id)
+    const threadDir = join(authorPath, 'threads', threadEntry.id)
 
     // Read meta
     let meta: ThreadMeta | null = null
@@ -169,7 +228,7 @@ export async function importFromThreadmind(projectId: string): Promise<{ importe
           systemPrompt: meta?.systemPrompt || null,
           summary,
           isReadOnly: true,
-          sourceAuthor: meta?.author || 'unknown',
+          sourceAuthor: effectiveAuthor,
         },
       })
       imported++
@@ -182,11 +241,12 @@ export async function importFromThreadmind(projectId: string): Promise<{ importe
           status: threadEntry.status,
           summary,
           systemPrompt: meta?.systemPrompt || existing.systemPrompt,
+          sourceAuthor: effectiveAuthor,
         },
       })
       updated++
     }
-    // Skip local (non-read-only) threads
+    // Skip local (non-read-only) threads — never overwrite
   }
 
   return { imported, updated }

@@ -22,12 +22,15 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  const authorName = await getAuthorName()
+
   const thread = await prisma.thread.create({
     data: {
       projectId: body.projectId,
       parentId: body.parentId || null,
       title: body.title,
       systemPrompt: body.systemPrompt || null,
+      sourceAuthor: authorName,
     },
   })
 

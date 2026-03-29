@@ -51,7 +51,13 @@
     "noThreads": "Aucun thread. Créez un thread racine pour commencer.",
     "delete": "Supprimer le Thread",
     "deleteConfirm": "Cela supprimera aussi tous les sous-threads. Continuer ?",
-    "context": "Aperçu du Contexte"
+    "context": "Aperçu du Contexte",
+    "references": "Références",
+    "addReference": "Ajouter une référence",
+    "removeReference": "Retirer",
+    "referencePicker": "Sélectionner un thread à référencer",
+    "byAuthor": "par {author}",
+    "referenceThis": "Référencer ce thread"
   },
   "chat": {
     "placeholder": "Tapez votre message...",
@@ -112,9 +118,15 @@
     "active": "Actif",
     "inactive": "Inactif",
     "disable": "Désactiver le fournisseur",
-    "providerDisabled": "Fournisseur désactivé"
+    "providerDisabled": "Fournisseur désactivé",
+    "authorName": "Nom de l'auteur",
+    "authorNamePlaceholder": "Votre nom (pour le partage en équipe)",
+    "authorNameHelp": "Identifie vos threads lors du partage avec l'équipe via git"
   },
   "sync": {
+    "sync": "Sync",
+    "syncing": "Synchronisation...",
+    "syncResult": "{imported} importés, {updated} mis à jour",
     "export": "Exporter vers .threadmind",
     "import": "Importer depuis .threadmind",
     "exporting": "Exportation...",

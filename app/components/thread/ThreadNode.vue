@@ -5,6 +5,7 @@ interface ThreadItem {
   title: string
   status: string
   isReadOnly: boolean
+  sourceAuthor: string | null
   _count?: { messages: number; children: number }
   children: ThreadItem[]
 }
@@ -66,8 +67,12 @@ const statusColors: Record<string, string> = {
       <!-- Title -->
       <span class="flex-1 truncate">{{ thread.title }}</span>
 
-      <!-- Read-only badge -->
-      <svg v-if="thread.isReadOnly" class="h-3 w-3 flex-shrink-0 text-surface-600" viewBox="0 0 20 20" fill="currentColor" :title="t('thread.readOnly')">
+      <!-- Author badge for shared threads -->
+      <span v-if="thread.isReadOnly && thread.sourceAuthor" class="flex-shrink-0 rounded bg-amber-500/10 px-1 py-0.5 text-[10px] text-amber-400">
+        {{ thread.sourceAuthor }}
+      </span>
+      <!-- Lock icon for read-only without author -->
+      <svg v-else-if="thread.isReadOnly" class="h-3 w-3 flex-shrink-0 text-surface-600" viewBox="0 0 20 20" fill="currentColor" :title="t('thread.readOnly')">
         <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" />
       </svg>
 

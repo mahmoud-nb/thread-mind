@@ -16,6 +16,68 @@ const editingPrompt = ref('')
 const generatingSummary = ref(false)
 const chatMode = ref<'plan' | 'agent'>('plan')
 
+// References
+interface ThreadRef {
+  id: string
+  referencedId: string
+  title: string
+  sourceAuthor: string | null
+  hasSummary: boolean
+}
+
+const threadRefs = ref<ThreadRef[]>([])
+const showRefPicker = ref(false)
+const refPickerSearch = ref('')
+const allProjectThreads = ref<Array<{ id: string; title: string; sourceAuthor: string | null; isReadOnly: boolean }>>([])
+
+async function loadReferences() {
+  try {
+    threadRefs.value = await $fetch<ThreadRef[]>(`/api/threads/${props.threadId}/references`)
+  } catch {}
+}
+
+async function openRefPicker() {
+  try {
+    const threads = await $fetch<Array<{ id: string; title: string; sourceAuthor: string | null; isReadOnly: boolean }>>(`/api/threads`, {
+      params: { projectId: props.projectId },
+    })
+    // Exclude current thread and already referenced threads
+    const refIds = new Set(threadRefs.value.map(r => r.referencedId))
+    allProjectThreads.value = threads.filter(t => t.id !== props.threadId && !refIds.has(t.id))
+    refPickerSearch.value = ''
+    showRefPicker.value = true
+  } catch {}
+}
+
+const filteredPickerThreads = computed(() => {
+  const q = refPickerSearch.value.toLowerCase()
+  if (!q) return allProjectThreads.value
+  return allProjectThreads.value.filter(t =>
+    t.title.toLowerCase().includes(q) || t.sourceAuthor?.toLowerCase().includes(q)
+  )
+})
+
+async function addReference(referencedId: string) {
+  try {
+    await $fetch(`/api/threads/${props.threadId}/references`, {
+      method: 'POST',
+      body: { referencedId },
+    })
+    showRefPicker.value = false
+    await loadReferences()
+  } catch {}
+}
+
+async function removeReference(referencedId: string) {
+  try {
+    await $fetch(`/api/threads/${props.threadId}/references`, {
+      method: 'DELETE',
+      body: { referencedId },
+    })
+    await loadReferences()
+  } catch {}
+}
+
 // Provider/Model selection
 interface ProviderOption {
   provider: string
@@ -81,11 +143,13 @@ loadProviders()
 // Fetch thread data
 watch(() => props.threadId, async (id) => {
   clear()
+  threadRefs.value = []
   if (id) {
     await fetchThread(id)
     if (activeThread.value) {
       loadMessages(activeThread.value.messages)
     }
+    loadReferences()
   }
 }, { immediate: true })
 
@@ -183,6 +247,48 @@ async function handleGenerateSummary() {
         <summary class="cursor-pointer text-xs font-medium text-accent-400">{{ t('thread.summary') }}</summary>
         <p class="mt-1 text-xs text-surface-400">{{ activeThread.summary }}</p>
       </details>
+    </div>
+
+    <!-- References -->
+    <div v-if="threadRefs.length > 0 || !activeThread?.isReadOnly" class="border-b border-surface-800 px-4 py-1.5">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-xs text-surface-500">{{ t('thread.references') }}:</span>
+        <span
+          v-for="ref in threadRefs"
+          :key="ref.id"
+          class="inline-flex items-center gap-1 rounded-full bg-surface-800 pl-2 pr-1 py-0.5 text-xs"
+        >
+          <span class="text-surface-300">{{ ref.title }}</span>
+          <span v-if="ref.sourceAuthor" class="text-surface-500">{{ t('thread.byAuthor', { author: ref.sourceAuthor }) }}</span>
+          <button
+            v-if="!activeThread?.isReadOnly"
+            class="ml-0.5 rounded-full p-0.5 text-surface-500 hover:text-red-400 hover:bg-red-500/10 cursor-pointer"
+            @click="removeReference(ref.referencedId)"
+          >
+            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </span>
+        <button
+          v-if="!activeThread?.isReadOnly"
+          class="rounded-full border border-dashed border-surface-600 px-2 py-0.5 text-xs text-surface-500 hover:text-accent hover:border-accent cursor-pointer transition-colors"
+          @click="openRefPicker"
+        >
+          + {{ t('thread.addReference') }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Read-only info for imported threads -->
+    <div v-if="activeThread?.isReadOnly" class="border-b border-surface-800 bg-amber-500/5 px-4 py-3">
+      <div class="flex items-center gap-2 text-xs text-amber-400">
+        <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+        </svg>
+        <span>{{ t('thread.readOnlyDesc') }}</span>
+        <span v-if="activeThread.sourceAuthor" class="text-surface-500">— {{ t('thread.byAuthor', { author: activeThread.sourceAuthor }) }}</span>
+      </div>
     </div>
 
     <!-- Tool calls display -->
@@ -330,6 +436,35 @@ async function handleGenerateSummary() {
         <div class="flex justify-end gap-2">
           <UButton variant="ghost" @click="showSystemPrompt = false">{{ t('common.cancel') }}</UButton>
           <UButton variant="primary" @click="handleSavePrompt">{{ t('common.save') }}</UButton>
+        </div>
+      </div>
+    </UDialog>
+
+    <!-- Reference picker dialog -->
+    <UDialog :open="showRefPicker" :title="t('thread.referencePicker')" @close="showRefPicker = false">
+      <div class="space-y-3">
+        <UInput
+          v-model="refPickerSearch"
+          :placeholder="t('common.search')"
+        />
+        <div class="max-h-64 overflow-y-auto space-y-1">
+          <div v-if="filteredPickerThreads.length === 0" class="py-4 text-center text-xs text-surface-500">
+            {{ t('common.noResults') }}
+          </div>
+          <button
+            v-for="thread in filteredPickerThreads"
+            :key="thread.id"
+            class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-surface-800 cursor-pointer transition-colors"
+            @click="addReference(thread.id)"
+          >
+            <svg v-if="thread.isReadOnly" class="h-3.5 w-3.5 text-amber-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+            </svg>
+            <div class="flex-1 min-w-0">
+              <span class="text-surface-200">{{ thread.title }}</span>
+              <span v-if="thread.sourceAuthor" class="ml-1 text-xs text-surface-500">{{ t('thread.byAuthor', { author: thread.sourceAuthor }) }}</span>
+            </div>
+          </button>
         </div>
       </div>
     </UDialog>

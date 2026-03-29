@@ -51,7 +51,13 @@
     "noThreads": "No threads yet. Create a root thread to start.",
     "delete": "Delete Thread",
     "deleteConfirm": "This will also delete all sub-threads. Continue?",
-    "context": "Context Preview"
+    "context": "Context Preview",
+    "references": "References",
+    "addReference": "Add Reference",
+    "removeReference": "Remove",
+    "referencePicker": "Select a thread to reference",
+    "byAuthor": "by {author}",
+    "referenceThis": "Reference this thread"
   },
   "chat": {
     "placeholder": "Type your message...",
@@ -112,9 +118,15 @@
     "active": "Active",
     "inactive": "Inactive",
     "disable": "Disable provider",
-    "providerDisabled": "Provider disabled"
+    "providerDisabled": "Provider disabled",
+    "authorName": "Author Name",
+    "authorNamePlaceholder": "Your name (for team sharing)",
+    "authorNameHelp": "Identifies your threads when shared with teammates via git"
   },
   "sync": {
+    "sync": "Sync",
+    "syncing": "Syncing...",
+    "syncResult": "Imported {imported}, updated {updated}",
     "export": "Export to .threadmind",
     "import": "Import from .threadmind",
     "exporting": "Exporting...",

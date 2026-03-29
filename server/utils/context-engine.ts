@@ -133,6 +133,29 @@ export async function assembleContext(
     }
   }
 
+  // Referenced thread summaries (team context)
+  const references = await prisma.threadReference.findMany({
+    where: { threadId },
+    include: {
+      referenced: {
+        select: { title: true, summary: true, sourceAuthor: true },
+      },
+    },
+  })
+
+  for (const ref of references) {
+    if (ref.referenced.summary) {
+      const author = ref.referenced.sourceAuthor || 'unknown'
+      const section = `## Referenced context: "${ref.referenced.title}" [by ${author}]\n${ref.referenced.summary}`
+      systemParts.push(section)
+      breakdown.push({
+        label: `Ref: ${ref.referenced.title}`,
+        text: section,
+        tokens: estimateTokens(section),
+      })
+    }
+  }
+
   // Thread-specific system prompt
   if (thread.systemPrompt) {
     systemParts.push(`## Current Thread Instructions:\n${thread.systemPrompt}`)
