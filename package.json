@@ -1,41 +1,73 @@
 {
   "name": "thread-mind",
   "version": "0.1.0",
-  "description": "AI-powered thread-based development assistant with context optimization",
+  "description": "AI-powered thread-based development assistant with context optimization and hierarchical thread management",
   "type": "module",
+  "license": "MIT",
+  "author": "ThreadMind Contributors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thread-mind/thread-mind.git"
+  },
+  "homepage": "https://github.com/thread-mind/thread-mind#readme",
+  "bugs": {
+    "url": "https://github.com/thread-mind/thread-mind/issues"
+  },
   "bin": {
     "thread-mind": "./bin/thread-mind.mjs"
+  },
+  "files": [
+    "bin/",
+    ".output/",
+    "prisma/schema.prisma",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
   },
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build",
+    "start": "node bin/thread-mind.mjs",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare && prisma generate",
+    "generate": "nuxt prepare && prisma generate",
+    "postinstall": "prisma generate || true",
+    "prepublishOnly": "npm run build",
     "db:migrate": "prisma migrate dev",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "lint": "nuxt typecheck"
   },
   "keywords": [
     "ai",
-    "thread",
     "assistant",
+    "thread",
     "developer-tools",
-    "context-optimization"
+    "context-optimization",
+    "claude",
+    "openai",
+    "gemini",
+    "deepseek",
+    "mistral",
+    "llama",
+    "code-generation",
+    "chat",
+    "local",
+    "nuxt",
+    "sqlite"
   ],
-  "author": "",
-  "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
     "@google/genai": "^1.46.0",
-    "@nuxtjs/i18n": "^10.2.3",
-    "@nuxtjs/tailwindcss": "^6.14.0",
-    "@pinia/nuxt": "^0.11.3",
     "@prisma/client": "^6.19.2",
-    "nuxt": "^4.4.2",
     "open": "^11.0.0",
     "openai": "^6.32.0",
     "prisma": "^6.19.2"
   },
-  "optionalDependencies": {
-    "@rolldown/binding-win32-x64-msvc": "^1.0.0-rc.12"
+  "devDependencies": {
+    "@nuxtjs/i18n": "^10.2.3",
+    "@nuxtjs/tailwindcss": "^6.14.0",
+    "@pinia/nuxt": "^0.11.3",
+    "nuxt": "^4.4.2"
   }
 }

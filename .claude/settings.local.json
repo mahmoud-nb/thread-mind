@@ -29,7 +29,9 @@
       "Bash(rmdir /s /q node_modules@rolldown)",
       "Bash(rmdir /s /q node_modules)",
       "Bash(del package-lock.json)",
-      "Bash(dir C:__developthread-mindnode_modules@rolldown)"
+      "Bash(dir C:__developthread-mindnode_modules@rolldown)",
+      "Bash(npx npm-packlist:*)",
+      "Bash(node -e \"const pkg = require\\(''./package.json''\\); console.log\\(''deps:'', Object.keys\\(pkg.dependencies\\).join\\('', ''\\)\\); console.log\\(''devDeps:'', Object.keys\\(pkg.devDependencies\\).join\\('', ''\\)\\);\")"
     ]
   }
 }
